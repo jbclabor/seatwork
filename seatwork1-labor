@@ -1,0 +1,45 @@
+import json
+import urllib3
+import csv
+import re
+import os
+import subprocess
+
+http = urllib3.PoolManager()
+api = "4a5c1ce47786425883d7e73aada5159e"
+
+query = f"https://newsapi.org/v2/everything?q=apple&from=2024-02-15&to=2024-02-15&sortBy=popularity&apiKey={api}&pageSize=20"
+
+r = http.request('GET', query)
+articles = json.loads(r.data.decode('utf-8'))
+
+articles = articles["articles"]
+
+for properties in articles:
+    del properties['urlToImage']
+    del properties['description']
+    del properties['content']
+
+    # Remove email-like patterns from author field
+    properties["author"] = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '', properties["author"])
+
+    # Remove parentheses from author field
+    properties["author"] = re.sub(r'[()]', '', properties["author"])
+
+    source = properties["source"]
+    properties["source"] = source["name"]
+
+csv_file = 'apple.csv'
+with open(csv_file, 'w', newline='') as csvfile:
+    fieldnames = articles[0].keys()
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+    writer.writeheader()
+
+    # iteration
+    for details in articles:
+        writer.writerow(details)
+
+# Open the CSV file
+if os.name == 'nt':  # For Windows
+    os.startfile(csv_file)
